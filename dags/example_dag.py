@@ -1,22 +1,31 @@
+from airflow.decorators import dag, task
 from datetime import datetime
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
 
-
-def hello_world():
-    print('Hello Airflow! Pipeline funcionando 🎉')
-
-
-with DAG(
-    dag_id='example_hello_world',
+@dag(
+    dag_id='taskflow_example',
     start_date=datetime(2024, 1, 1),
-    schedule_interval='@weekly',
+    schedule='@weekly',
     catchup=False,
-    tags=['example', 'learning'],
-) as dag:
+    tags=['learning'],
+)
+def taskflow_dag():
 
-    hello_task = PythonOperator(
-        task_id='hello_world_task',
-        python_callable=hello_world,
-    )
+    @task
+    def extract():
+        return 'dados extraídos'
+
+    @task
+    def transform(data):
+        return data.upper()
+
+    @task
+    def load(data):
+        print(f'Load: {data}')
+
+    data = extract()
+    transformed = transform(data)
+    load(transformed)
+
+
+taskflow_dag()
