@@ -1,5 +1,6 @@
 from airflow.decorators import dag, task
 from datetime import datetime
+import logging
 
 
 @dag(
@@ -13,13 +14,40 @@ def taskflow_dag():
 
     @task
     def define_sources():
-        print('define_sources')
-        return 'dados extraídos'
+        sources = [
+            {
+                'source_id': 'bbc',
+                'name': 'BBC News',
+                'type': 'rss',
+                'language': 'en',
+                'category': 'general',
+                'url': 'https://feeds.bbci.co.uk/news/rss.xml'
+            },
+            {
+                'source_id': 'reuters',
+                'name': 'Reuters',
+                'type': 'rss',
+                'language': 'en',
+                'category': 'general',
+                'url': 'https://ir.thomsonreuters.com/rss/news-releases.xml'
+            },
+            {
+                'source_id': 'voa',
+                'name': 'VOA Learning English',
+                'type': 'rss',
+                'language': 'en',
+                'category': 'learning',
+                'url': 'https://www.voanews.com/api/zb__qtl-vomx-tpeqrtqq'
+            }
+        ]
+
+        logging.info(f'{len(sources)} sources defined')
+        return sources
 
     @task
-    def fetch_articles(data):
-        print('fetch_articles')
-        return data.upper()
+    def fetch_articles(sources):
+        print(f'fetch_articles {sources}')
+        return ''
 
     @task
     def validate_articles(data):
@@ -41,9 +69,9 @@ def taskflow_dag():
         print('register_extract_metadata')
         return data.upper()
 
-    data = define_sources()
-    data = fetch_articles(data)
-    data = validate_articles(data)
+    sources = define_sources()
+    articles = fetch_articles(sources)
+    data = validate_articles(articles)
     data = deduplicate_articles(data)
     data = store_raw_articles_s3(data)
     register_extract_metadata(data)
