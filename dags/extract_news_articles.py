@@ -54,7 +54,7 @@ def taskflow_dag():
             article = ArticleModel()
             article.source_id = source['source_id']
 
-            articles.append(article)
+            articles.append(article.to_dict())
             logging.info(f"Article fetched")
 
         return articles
@@ -62,22 +62,22 @@ def taskflow_dag():
     @task
     def validate_articles(data):
         logging.info('validate_articles')
-        return []
+        return data
 
     @task
     def deduplicate_articles(data):
         logging.info('deduplicate_articles')
-        return []
+        return data
 
     @task
     def store_raw_articles_s3(data):
         logging.info('store_raw_articles_s3')
-        return []
+        return data
 
     @task
     def register_extract_metadata(data):
         logging.info('register_extract_metadata')
-        return []
+        return data
 
     sources = define_sources()
     articles = fetch_articles(sources)
