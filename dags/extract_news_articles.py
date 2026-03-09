@@ -1,6 +1,7 @@
 from airflow.decorators import dag, task
 from datetime import datetime
 import logging
+from src.article_model import ArticleModel
 
 
 @dag(
@@ -46,28 +47,37 @@ def taskflow_dag():
 
     @task
     def fetch_articles(sources):
-        print(f'fetch_articles {sources}')
-        return ''
+        articles = []
+        for source in sources:
+            logging.info(f"Fetching articles from {source['name']} ({source['url']})")
+
+            article = ArticleModel()
+            article.source_id = source['source_id']
+
+            articles.append(article)
+            logging.info(f"Article fetched")
+
+        return articles
 
     @task
     def validate_articles(data):
-        print('validate_articles')
-        return data.upper()
+        logging.info('validate_articles')
+        return []
 
     @task
     def deduplicate_articles(data):
-        print('deduplicate_articles')
-        return data.upper()
+        logging.info('deduplicate_articles')
+        return []
 
     @task
     def store_raw_articles_s3(data):
-        print('store_raw_articles_s3')
-        return data.upper()
+        logging.info('store_raw_articles_s3')
+        return []
 
     @task
     def register_extract_metadata(data):
-        print('register_extract_metadata')
-        return data.upper()
+        logging.info('register_extract_metadata')
+        return []
 
     sources = define_sources()
     articles = fetch_articles(sources)
