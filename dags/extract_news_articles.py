@@ -3,6 +3,7 @@ from datetime import datetime
 import logging
 from src.scrapers.bbc import BBC
 from src.scrapers.cbc import CBC
+from src.scrapers.the_guardian import TheGuardian
 
 
 @dag(
@@ -25,6 +26,11 @@ def taskflow_dag():
 
         logging.info("Fetching articles from CBC")
         scraper = CBC()
+        fetched_articles.extend(scraper.extract())
+        logging.info("Articles fetched")
+
+        logging.info("Fetching articles from The Guardian")
+        scraper = TheGuardian()
         fetched_articles.extend(scraper.extract())
         logging.info("Articles fetched")
 
