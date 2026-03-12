@@ -1,7 +1,7 @@
 from airflow.decorators import dag, task
 from datetime import datetime
 import logging
-from src.article_model import ArticleModel
+from src.scrapers.bbc import BBC
 
 
 @dag(
@@ -14,50 +14,15 @@ from src.article_model import ArticleModel
 def taskflow_dag():
 
     @task
-    def define_sources():
-        sources = [
-            {
-                'source_id': 'bbc',
-                'name': 'BBC News',
-                'type': 'rss',
-                'language': 'en',
-                'category': 'general',
-                'url': 'https://feeds.bbci.co.uk/news/rss.xml'
-            },
-            {
-                'source_id': 'reuters',
-                'name': 'Reuters',
-                'type': 'rss',
-                'language': 'en',
-                'category': 'general',
-                'url': 'https://ir.thomsonreuters.com/rss/news-releases.xml'
-            },
-            {
-                'source_id': 'voa',
-                'name': 'VOA Learning English',
-                'type': 'rss',
-                'language': 'en',
-                'category': 'learning',
-                'url': 'https://www.voanews.com/api/zb__qtl-vomx-tpeqrtqq'
-            }
-        ]
+    def fetch_articles():
+        fetched_articles = []
 
-        logging.info(f'{len(sources)} sources defined')
-        return sources
+        logging.info("Fetching articles from BBC")
+        scraper = BBC()
+        fetched_articles.extend(scraper.extract())
+        logging.info("Article fetched")
 
-    @task
-    def fetch_articles(sources):
-        articles = []
-        for source in sources:
-            logging.info(f"Fetching articles from {source['name']} ({source['url']})")
-
-            article = ArticleModel()
-            article.source_id = source['source_id']
-
-            articles.append(article.to_dict())
-            logging.info(f"Article fetched")
-
-        return articles
+        return fetched_articles
 
     @task
     def validate_articles(data):
@@ -79,8 +44,7 @@ def taskflow_dag():
         logging.info('register_extract_metadata')
         return data
 
-    sources = define_sources()
-    articles = fetch_articles(sources)
+    articles = fetch_articles()
     data = validate_articles(articles)
     data = deduplicate_articles(data)
     data = store_raw_articles_s3(data)
