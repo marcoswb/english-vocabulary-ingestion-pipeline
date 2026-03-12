@@ -2,18 +2,18 @@ from src.scrapers.base import BaseScraper
 from datetime import datetime, timedelta
 from src.models.article import Article
 
-class BBC:
+class CBC:
 
     def __init__(self):
-        self.__base_url = 'https://www.bbc.com'
+        self.__base_url = 'https://www.cbc.ca'
         self.__articles_titles = []
 
     def extract(self, max_articles=5):
-        main_page = BaseScraper(self.__base_url)
+        main_page = BaseScraper(f'{self.__base_url}/news')
         main_page.load_page()
         articles = []
 
-        for item in main_page.get_itens('a.sc-8a623a54-0'):
+        for item in main_page.get_itens('a.cardText'):
             link = str(item['href'])
             if main_page.is_link(link):
                 if link.startswith(self.__base_url):
@@ -30,13 +30,13 @@ class BBC:
             if not url.startswith(self.__base_url):
                 continue
 
-            article = Article('bbc')
+            article = Article('cbc')
             article.url = url
 
             article_page = BaseScraper(url)
             article_page.load_page()
 
-            div_title = article_page.get_itens('[data-component="headline-block"]')
+            div_title = article_page.get_itens('h1.detailHeadline')
             if div_title:
                 article.title = div_title[0].get_text(strip=True)
             else:
@@ -45,15 +45,18 @@ class BBC:
             if article.title in self.__articles_titles:
                 continue
 
-            divs_text = article_page.get_itens('[data-component="text-block"] p, [data-component="subheadline-block"] h2')
+            divs_text = article_page.get_itens('.story > p, .story > h2')
             if not divs_text:
                 continue
 
-            div_time_published = article_page.get_itens('.sc-3adb3607-2')
-            if div_time_published:
-                article.published_at = format_time(div_time_published[0].get_text(strip=True))
+            div_byline_details = article_page.get_itens('.bylineDetails')
+            if div_byline_details:
+                for element in div_byline_details:
+                    if 'Posted' in element.get_text():
+                        article.published_at = format_time(element.get_text(strip=True))
+                        break
 
-            div_contribuitors = article_page.get_itens('.sc-3adb3607-8')
+            div_contribuitors = article_page.get_itens('.authorText')
             if div_contribuitors:
                 contribuitors = ''
                 for contributor in div_contribuitors:
@@ -74,23 +77,14 @@ class BBC:
 
 def format_time(time_str):
     try:
-        if 'ago' in time_str:
-            time_str = time_str.replace(' ago', '')
+        time_str = time_str.split('Posted: ')[1].strip()
 
-            if 'minute' in time_str:
-                minutes = int(time_str.replace(' minutes', '').replace(' minute', ''))
-                dt = datetime.now() - timedelta(minutes=minutes)
-            elif 'hour' in time_str:
-                hours = int(time_str.replace(' hours', '').replace(' hour', ''))
-                dt = datetime.now() - timedelta(hours=hours)
-            elif 'day' in time_str:
-                days = int(time_str.replace(' days', '').replace(' day', ''))
-                dt = datetime.now() - timedelta(days=days)
-            else:
-                return None
+        if 'AM' in time_str:
+            time_str = time_str.split('AM')[0].strip() + ' AM'
+        elif 'PM' in time_str:
+            time_str = time_str.split('PM')[0].strip() + ' PM'
 
-            return dt.isoformat()
-
-        return None
-    except ValueError:
+        datetime_obj = datetime.strptime(time_str, "%b %d, %Y %I:%M %p")
+        return datetime_obj.isoformat(timespec='microseconds')
+    except (ValueError, IndexError):
         return None

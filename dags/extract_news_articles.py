@@ -2,6 +2,7 @@ from airflow.decorators import dag, task
 from datetime import datetime
 import logging
 from src.scrapers.bbc import BBC
+from src.scrapers.cbc import CBC
 
 
 @dag(
@@ -20,7 +21,12 @@ def taskflow_dag():
         logging.info("Fetching articles from BBC")
         scraper = BBC()
         fetched_articles.extend(scraper.extract())
-        logging.info("Article fetched")
+        logging.info("Articles fetched")
+
+        logging.info("Fetching articles from CBC")
+        scraper = CBC()
+        fetched_articles.extend(scraper.extract())
+        logging.info("Articles fetched")
 
         return fetched_articles
 
