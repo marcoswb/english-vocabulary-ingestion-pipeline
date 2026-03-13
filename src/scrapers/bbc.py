@@ -8,7 +8,7 @@ class BBC:
         self.__base_url = 'https://www.bbc.com'
         self.__articles_titles = []
 
-    def extract(self, max_articles=5):
+    def extract(self, max_articles=20):
         main_page = BaseScraper(self.__base_url)
         main_page.load_page()
         articles = []

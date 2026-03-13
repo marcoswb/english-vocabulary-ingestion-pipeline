@@ -11,7 +11,6 @@ class Article:
         self.published_at = ''
         self.collected_at = get_current_timestamp()
         self.title = ''
-        self.description = ''
         self.full_text = ''
         self.author = ''
         self.language = "en"
@@ -54,7 +53,6 @@ class Article:
             'published_at': self.published_at,
             'collected_at': self.collected_at,
             'title': self.title,
-            'description': self.description,
             'full_text': self.full_text,
             'author': self.author,
             'language': self.language

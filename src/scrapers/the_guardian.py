@@ -8,7 +8,7 @@ class TheGuardian:
         self.__base_url = 'https://www.theguardian.com'
         self.__articles_titles = []
 
-    def extract(self, max_articles=5):
+    def extract(self, max_articles=20):
         main_page = BaseScraper(f'{self.__base_url}/international')
         main_page.load_page()
         articles = []

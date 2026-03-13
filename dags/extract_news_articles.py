@@ -39,28 +39,33 @@ def taskflow_dag():
     @task
     def validate_articles(data):
         logging.info('validate_articles')
-        return data
 
-    @task
-    def deduplicate_articles(data):
-        logging.info('deduplicate_articles')
-        return data
+        new_data = []
+        for article in data:
+            if not article.get('title') or not article.get('url'):
+                continue
+
+            if not article.get('full_text'):
+                continue
+
+            new_data.append(article)
+
+        return new_data
 
     @task
     def store_raw_articles_s3(data):
         logging.info('store_raw_articles_s3')
+        logging.info(f'Artigos para salvar: {len(data)}')
         return data
 
     @task
     def register_extract_metadata(data):
         logging.info('register_extract_metadata')
-        return data
 
     articles = fetch_articles()
-    data = validate_articles(articles)
-    data = deduplicate_articles(data)
-    data = store_raw_articles_s3(data)
-    register_extract_metadata(data)
+    filtered_articles = validate_articles(articles)
+    stored_articles = store_raw_articles_s3(filtered_articles)
+    register_extract_metadata(stored_articles)
 
 
 taskflow_dag()
