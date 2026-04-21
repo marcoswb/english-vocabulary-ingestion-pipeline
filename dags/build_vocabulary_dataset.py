@@ -1,5 +1,6 @@
 from airflow.decorators import dag, task
 from datetime import datetime
+from nltk.corpus import stopwords
 import logging
 import unicodedata
 import re
@@ -61,11 +62,11 @@ def taskflow_dag():
         return words
 
     @task
-    def remove_stopwords(input_articles):
+    def remove_stopwords(input_words):
         logging.info('remove_stopwords')
 
-        articles = []
-        return articles
+        stop_words = set(stopwords.words('english'))
+        return [w for w in input_words if w not in stop_words and len(w) > 2]
 
     @task
     def calculate_word_frequency(input_articles):

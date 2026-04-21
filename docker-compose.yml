@@ -1,4 +1,5 @@
 x-airflow-common: &airflow-common
+  build: .
   image: apache/airflow:2.9.0
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
