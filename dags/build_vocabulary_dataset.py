@@ -69,47 +69,74 @@ def taskflow_dag():
         return [w for w in input_words if w not in stop_words and len(w) > 2]
 
     @task
-    def calculate_word_frequency(input_articles):
+    def calculate_word_frequency(input_words):
         logging.info('calculate_word_frequency')
 
-        words = []
-        return words
+        frequency = {}
+        for word in input_words:
+            frequency.setdefault(word, 0)
+            frequency[word] += 1
+
+        return frequency
 
     @task
     def filter_candidate_words(input_words):
         logging.info('filter_candidate_words')
 
-        words = []
+        words = {}
+        for word, freq in input_words.items():
+            if freq >= 5:
+                words[word] = freq
+
         return words
 
     @task
     def filter_existing_words(input_words):
         logging.info('filter_existing_words')
 
-        words = []
+        words = {}
+        for word, freq in input_words.items():
+            if word not in ['example', 'test', 'sample']:
+                words[word] = freq
+
         return words
 
     @task
     def insert_new_words(input_words):
         logging.info('insert_new_words')
 
-        return {}
+        ordered_words = sorted(input_words.items(), key=lambda x: x[1], reverse=True)
+        top_words = ordered_words[:5]
+        print(top_words)
+
+        return {
+            'total_elegible_words': len(input_words),
+            'inserted_words': len(top_words),
+            'new_words': top_words
+        }
 
     @task
     def register_dataset_metadata(insert_info):
         logging.info('register_dataset_metadata')
 
-        return {}
+        metadata = {
+            'execution_time': datetime.utcnow().isoformat(),
+            'total_elegible_words': insert_info['total_elegible_words'],
+            'inserted_words': insert_info['inserted_words'],
+            'new_words': insert_info['new_words']
+        }
+
+        logging.info(f'Extract metadata: {metadata}')
 
     raw_articles = load_raw_articles()
     consolidated_articles = build_corpus(raw_articles)
     cleaned_articles = clean_text(consolidated_articles)
     tokenized_articles = tokenize_words(cleaned_articles)
     filtered_articles = remove_stopwords(tokenized_articles)
-    list_word_frequency = calculate_word_frequency(filtered_articles)
-    list_condidate_words = filter_candidate_words(list_word_frequency)
-    list_filtered_words = filter_existing_words(list_condidate_words)
-    s3_info = insert_new_words(list_filtered_words)
+    dict_word_frequency = calculate_word_frequency(filtered_articles)
+    dict_condidate_words = filter_candidate_words(dict_word_frequency)
+    dict_filtered_words = filter_existing_words(dict_condidate_words)
+    s3_info = insert_new_words(dict_filtered_words)
     register_dataset_metadata(s3_info)
 
 
