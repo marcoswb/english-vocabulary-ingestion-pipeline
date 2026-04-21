@@ -1,6 +1,8 @@
 from airflow.decorators import dag, task
 from datetime import datetime
 import logging
+import unicodedata
+import re
 from src.load.s3_loader import load_last_raw
 
 
@@ -21,24 +23,42 @@ def taskflow_dag():
     @task
     def build_corpus(input_articles):
         logging.info('build_corpus')
-        print(input_articles)
 
         articles = []
+        for article in input_articles:
+            articles.append(
+                f"{article['title']} {article['full_text']}"
+            )
+
         return articles
 
     @task
-    def clean_text(input_articles):
+    def clean_text(input_articles_text):
         logging.info('clean_text')
 
         articles = []
+        for article in input_articles_text:
+            cleaned_article = article.lower()
+
+            cleaned_article = unicodedata.normalize('NFD', cleaned_article)
+            cleaned_article = cleaned_article.encode('ascii', 'ignore').decode('utf-8')
+
+            cleaned_article = re.sub(r'[^a-zA-Z\s]', '', cleaned_article)
+            cleaned_article = re.sub(r'\s+', ' ', cleaned_article)
+
+            articles.append(cleaned_article.strip())
+
         return articles
 
     @task
     def tokenize_words(input_articles):
         logging.info('tokenize_words')
 
-        articles = []
-        return articles
+        words = []
+        for article in input_articles:
+            words.extend(article.split())
+
+        return words
 
     @task
     def remove_stopwords(input_articles):
