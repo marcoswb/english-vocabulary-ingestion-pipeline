@@ -8,7 +8,7 @@ class TheGuardian:
         self.__base_url = 'https://www.theguardian.com'
         self.__articles_titles = []
 
-    def extract(self, max_articles=20):
+    def extract(self):
         main_page = BaseScraper(f'{self.__base_url}/international')
         main_page.load_page()
         articles = []
@@ -68,7 +68,7 @@ class TheGuardian:
             articles.append(article.to_dict())
             self.__articles_titles.append(article.title)
 
-            if len(articles) == max_articles:
+            if len(articles) == BaseScraper.MAX_ARTICLES:
                 break
 
         return articles

@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 
 
 class BaseScraper:
+    MAX_ARTICLES = 50
 
     def __init__(self, website_link):
         self.__website_link = website_link
