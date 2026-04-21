@@ -4,8 +4,7 @@ import logging
 from src.scrapers.bbc import BBC
 from src.scrapers.cbc import CBC
 from src.scrapers.the_guardian import TheGuardian
-from src.utils.functions import get_s3_bucket
-from src.load.s3_writer import upload_json_to_s3
+from src.load.s3_writer import save_vocab_data
 
 
 @dag(
@@ -58,12 +57,7 @@ def taskflow_dag():
     def store_raw_articles_s3(store_articles):
         logging.info('store_raw_articles_s3')
 
-        bucket_name = get_s3_bucket()
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        key = f'raw/articles/date={today}/articles.json'
-
-        upload_json_to_s3(store_articles, bucket_name, key)
-
+        bucket_name, key = save_vocab_data(store_articles)
         return {
             'bucket': bucket_name,
             'key': key,
