@@ -5,6 +5,7 @@ import logging
 import unicodedata
 import re
 from src.load.s3_loader import load_last_raw
+from src.utils.functions import is_advanced_word, remove_entity_recognition
 
 
 @dag(
@@ -57,7 +58,7 @@ def taskflow_dag():
 
         words = []
         for article in input_articles:
-            words.extend(article.split())
+            words.extend(remove_entity_recognition(article))
 
         return words
 
@@ -65,8 +66,21 @@ def taskflow_dag():
     def remove_stopwords(input_words):
         logging.info('remove_stopwords')
 
+        words = []
         stop_words = set(stopwords.words('english'))
-        return [w for w in input_words if w not in stop_words and len(w) > 2]
+        for word in input_words:
+            if word in stop_words:
+                continue
+
+            if len(word) <= 2:
+                continue
+
+            if not is_advanced_word(word):
+                continue
+
+            words.append(word)
+
+        return words
 
     @task
     def calculate_word_frequency(input_words):
