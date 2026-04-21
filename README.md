@@ -88,6 +88,25 @@ Orquestração feita com **Apache Airflow**.
 -   Dashboard analítico
 
 ------------------------------------------------------------------------
+## ⚙️ Airflow Variables
+
+| Variable Name     | Description                        | Example Value                |
+|------------------|----------------------------------|------------------------------|
+| S3_BUCKET_NAME   | S3 bucket to store raw articles  | english-vocab-pipeline       |
+------------------------------------------------------------------------
+
+## 🔌 Airflow Connections
+
+The following Airflow connection must be configured:
+
+### aws_default
+
+- Name: aws_default
+- Type: Amazon Web Services
+- Required fields:
+  - Access Key
+  - Secret Key
+------------------------------------------------------------------------
 
 ## 👤 Autor
 
