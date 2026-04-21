@@ -16,7 +16,7 @@ def get_s3_bucket():
 def is_advanced_word(word):
     return (
         len(word) >= 4 and
-        zipf_frequency(word, 'en') < 4.5
+        zipf_frequency(word, 'en') < 5.3
     )
 
 def remove_entity_recognition(text):
