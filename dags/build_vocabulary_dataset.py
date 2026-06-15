@@ -4,9 +4,20 @@ from nltk.corpus import stopwords
 import logging
 import unicodedata
 import re
+import spacy
 from src.load.s3_loader import load_last_raw
-from src.utils.functions import is_advanced_word, remove_entity_recognition
+from src.utils.functions import is_advanced_word
 from src.models.vocabulary import Vocabulary
+
+nlp = spacy.load('en_core_web_sm')
+
+ENTITY_TYPES_TO_REMOVE = {
+    'PERSON',
+    'ORG',
+    'GPE',
+    'LOC',
+    'NORP'
+}
 
 
 @dag(
@@ -36,6 +47,24 @@ def taskflow_dag():
         return articles
 
     @task
+    def remove_named_entities(input_articles_text):
+        logging.info('remove_named_entities')
+
+        articles = []
+        for doc in nlp.pipe(input_articles_text):
+
+            tokens = []
+            for token in doc:
+                is_entity = (token.ent_type_ in ENTITY_TYPES_TO_REMOVE)
+
+                if not is_entity:
+                    tokens.append(token.text)
+
+            articles.append(' '.join(tokens))
+
+        return articles
+
+    @task
     def clean_text(input_articles_text):
         logging.info('clean_text')
 
@@ -54,12 +83,16 @@ def taskflow_dag():
         return articles
 
     @task
-    def tokenize_words(input_articles):
-        logging.info('tokenize_words')
+    def tokenize_lemmatize_words(input_articles):
+        logging.info('tokenize_lemmatize_words')
 
         words = []
-        for article in input_articles:
-            words.extend(remove_entity_recognition(article))
+        for doc in nlp.pipe(input_articles):
+            for token in doc:
+                lemma = token.lemma_
+
+                if lemma.isalpha():
+                    words.append(lemma)
 
         return words
 
@@ -107,10 +140,6 @@ def taskflow_dag():
 
     @task
     def filter_existing_words(input_words):
-        """
-        Filtra palavras que já existem na base de dados para evitar duplicidade,
-        e também filtra palavras que não são consideradas avançadas, ou seja, palavras comuns que não agregam valor ao vocabulário
-        """
         logging.info('filter_existing_words')
 
         vocab = Vocabulary()
@@ -136,7 +165,7 @@ def taskflow_dag():
         logging.info('insert_new_words')
 
         ordered_words = sorted(input_words.items(), key=lambda x: x[1], reverse=True)
-        top_words = ordered_words[:5]
+        top_words = ordered_words[:10]
         print(top_words)
 
         return {
@@ -160,10 +189,11 @@ def taskflow_dag():
 
     raw_articles = load_raw_articles()
     consolidated_articles = build_corpus(raw_articles)
-    cleaned_articles = clean_text(consolidated_articles)
-    tokenized_articles = tokenize_words(cleaned_articles)
-    filtered_articles = remove_stopwords(tokenized_articles)
-    dict_word_frequency = calculate_word_frequency(filtered_articles)
+    filtered_articles_entities = remove_named_entities(consolidated_articles)
+    cleaned_articles = clean_text(filtered_articles_entities)
+    tokenized_words = tokenize_lemmatize_words(cleaned_articles)
+    filtered_words = remove_stopwords(tokenized_words)
+    dict_word_frequency = calculate_word_frequency(filtered_words)
     dict_condidate_words = filter_candidate_words(dict_word_frequency)
     dict_filtered_words = filter_existing_words(dict_condidate_words)
     s3_info = insert_new_words(dict_filtered_words)

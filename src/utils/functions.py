@@ -1,9 +1,6 @@
 from datetime import datetime
 from airflow.models import Variable
 from wordfreq import zipf_frequency
-import spacy
-
-nlp = spacy.load('en_core_web_sm')
 
 def get_current_timestamp():
     return datetime.now().isoformat()
@@ -18,11 +15,3 @@ def is_advanced_word(word):
         len(word) >= 4 and
         zipf_frequency(word, 'en') < 5.3
     )
-
-def remove_entity_recognition(text):
-    doc = nlp(text)
-    return [
-        token.text
-        for token in doc
-        if not token.ent_type_
-    ]
