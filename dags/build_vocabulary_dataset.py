@@ -6,6 +6,7 @@ import unicodedata
 import re
 from src.load.s3_loader import load_last_raw
 from src.utils.functions import is_advanced_word, remove_entity_recognition
+from src.models.vocabulary import Vocabulary
 
 
 @dag(
@@ -106,17 +107,32 @@ def taskflow_dag():
 
     @task
     def filter_existing_words(input_words):
+        """
+        Filtra palavras que já existem na base de dados para evitar duplicidade,
+        e também filtra palavras que não são consideradas avançadas, ou seja, palavras comuns que não agregam valor ao vocabulário
+        """
         logging.info('filter_existing_words')
+
+        vocab = Vocabulary()
+        vocab.connect()
+
+        existing_words = vocab.get_all_english_words()
+        logging.info(f'Existing words in vocabulary: {len(existing_words)}')
 
         words = {}
         for word, freq in input_words.items():
-            if word not in ['example', 'test', 'sample']:
+            if word not in existing_words:
                 words[word] = freq
 
         return words
 
     @task
     def insert_new_words(input_words):
+        """
+        Inserir em um banco temporario X palavras para ser validado pelo usuario no bot antes de inserir na base final
+        :param input_words:
+        :return:
+        """
         logging.info('insert_new_words')
 
         ordered_words = sorted(input_words.items(), key=lambda x: x[1], reverse=True)
