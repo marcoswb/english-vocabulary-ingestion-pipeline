@@ -5,9 +5,11 @@ import logging
 import unicodedata
 import re
 import spacy
+from wordfreq import zipf_frequency
 from src.load.s3_loader import load_last_raw
 from src.utils.functions import is_advanced_word
 from src.models.vocabulary import Vocabulary
+from src.models.candidate_words import CandidateWords
 
 nlp = spacy.load('en_core_web_sm')
 
@@ -151,22 +153,50 @@ def taskflow_dag():
         words = {}
         for word, freq in input_words.items():
             if word not in existing_words:
-                words[word] = freq
+                try:
+                    zipf_res = zipf_frequency(word, 'en')
+                    words[word] = {
+                        'frequency': freq,
+                        'zipf_frequency': zipf_res,
+                        'score': (
+                            int(freq) * 0.6
+                            + (5.3 - zipf_res) * 0.4
+                        )
+                    }
+                except:
+                    logging.warning(f'Error calculating zipf score for word: {word}')
+                    continue
 
         return words
 
     @task
     def insert_new_words(input_words):
-        """
-        Inserir em um banco temporario X palavras para ser validado pelo usuario no bot antes de inserir na base final
-        :param input_words:
-        :return:
-        """
         logging.info('insert_new_words')
 
-        ordered_words = sorted(input_words.items(), key=lambda x: x[1], reverse=True)
-        top_words = ordered_words[:10]
-        print(top_words)
+        top_words = []
+        for word, infos in input_words.items():
+            score = infos['score']
+
+            if len(top_words) < 10:
+                top_words.append((word, score))
+            else:
+                min_score = min(top_words, key=lambda x: x[1])[1]
+                if score > min_score:
+                    top_words = [w for w in top_words if w[1] != min_score]
+                    top_words.append((word, score))
+
+        for word, score in top_words:
+            infos_aux = input_words[word]
+
+            cand_word = CandidateWords()
+            cand_word.connect()
+            cand_word.insert_line(
+                word=word,
+                frequency=infos_aux['frequency'],
+                zipf_score=infos_aux['zipf_frequency'],
+                score=score
+            )
+            logging.info(f'Candidate word: {word} with score: {score}')
 
         return {
             'total_elegible_words': len(input_words),
