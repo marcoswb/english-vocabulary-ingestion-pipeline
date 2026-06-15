@@ -295,7 +295,7 @@ def taskflow_dag():
                 count += 1
 
         metadata = {
-            'total_sentences': len(count),
+            'total_sentences': count,
             'total_words_sentences': len(input_sentences)
         }
 

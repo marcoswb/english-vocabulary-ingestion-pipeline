@@ -41,7 +41,7 @@ def load_metadata():
     ]
 
     if not keys:
-        raise ValueError('Nenhum arquivo encontrado no S3')
+        return {}
 
     latest_key = sorted(keys)[-1]
     file_content = hook.read_key(key=latest_key, bucket_name=bucket_name)
