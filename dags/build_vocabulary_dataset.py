@@ -7,6 +7,7 @@ import re
 import spacy
 from wordfreq import zipf_frequency
 from src.load.s3_loader import load_last_raw
+from src.load.s3_writer import save_metadata
 from src.utils.functions import is_advanced_word
 from src.models.vocabulary import Vocabulary
 from src.models.candidate_words import CandidateWords
@@ -147,25 +148,36 @@ def taskflow_dag():
         vocab = Vocabulary()
         vocab.connect()
 
+        cand_word = CandidateWords()
+        cand_word.connect()
+
         existing_words = vocab.get_all_english_words()
         logging.info(f'Existing words in vocabulary: {len(existing_words)}')
 
+        pending_words = cand_word.get_all_english_words()
+        logging.info(f'Pending words in vocabulary: {len(pending_words)}')
+
         words = {}
         for word, freq in input_words.items():
-            if word not in existing_words:
-                try:
-                    zipf_res = zipf_frequency(word, 'en')
-                    words[word] = {
-                        'frequency': freq,
-                        'zipf_frequency': zipf_res,
-                        'score': (
-                            int(freq) * 0.6
-                            + (5.3 - zipf_res) * 0.4
-                        )
-                    }
-                except:
-                    logging.warning(f'Error calculating zipf score for word: {word}')
-                    continue
+            if word in existing_words:
+                continue
+
+            if word in pending_words:
+                continue
+
+            try:
+                zipf_res = zipf_frequency(word, 'en')
+                words[word] = {
+                    'frequency': freq,
+                    'zipf_frequency': zipf_res,
+                    'score': (
+                        int(freq) * 0.6
+                        + (5.3 - zipf_res) * 0.4
+                    )
+                }
+            except:
+                logging.warning(f'Error calculating zipf score for word: {word}')
+                continue
 
         return words
 
@@ -215,6 +227,7 @@ def taskflow_dag():
             'new_words': insert_info['new_words']
         }
 
+        save_metadata(metadata)
         logging.info(f'Extract metadata: {metadata}')
 
     raw_articles = load_raw_articles()

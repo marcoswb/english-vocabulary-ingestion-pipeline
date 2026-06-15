@@ -23,3 +23,13 @@ def save_vocab_data(data):
 
     upload_json_to_s3(data, bucket_name, key)
     return bucket_name, key
+
+
+def save_metadata(data):
+    bucket_name = get_s3_bucket()
+
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    key = f'raw/articles/date={today}/metadata.json'
+
+    upload_json_to_s3(data, bucket_name, key)
+    return bucket_name, key
