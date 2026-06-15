@@ -11,6 +11,7 @@ from src.load.s3_writer import save_metadata
 from src.utils.functions import is_advanced_word
 from src.models.vocabulary import Vocabulary
 from src.models.candidate_words import CandidateWords
+from src.models.candidate_words_sentences import CandidateWordsSentences
 
 nlp = spacy.load('en_core_web_sm')
 
@@ -33,7 +34,19 @@ ENTITY_TYPES_TO_REMOVE = {
 def taskflow_dag():
 
     @task
-    def load_raw_articles():
+    def register_start_metadata():
+        logging.info('register_start_metadata')
+
+        metadata = {
+            'start_execution_time': datetime.utcnow().isoformat()
+        }
+
+        save_metadata(metadata)
+        logging.info(f'Extract metadata: {metadata}')
+        return 1
+
+    @task
+    def load_raw_articles(_):
         logging.info('load_raw_articles')
         return load_last_raw()
 
@@ -197,40 +210,111 @@ def taskflow_dag():
                     top_words = [w for w in top_words if w[1] != min_score]
                     top_words.append((word, score))
 
+        cand_word = CandidateWords()
+        cand_word.connect()
+
+        infos_inserted = {}
         for word, score in top_words:
             infos_aux = input_words[word]
 
-            cand_word = CandidateWords()
-            cand_word.connect()
-            cand_word.insert_line(
+            id_cand = cand_word.insert_line(
                 word=word,
                 frequency=infos_aux['frequency'],
                 zipf_score=infos_aux['zipf_frequency'],
                 score=score
             )
+
+            infos_inserted[word] = id_cand
             logging.info(f'Candidate word: {word} with score: {score}')
 
-        return {
+
+        metadata = {
             'total_elegible_words': len(input_words),
             'inserted_words': len(top_words),
             'new_words': top_words
         }
 
+        save_metadata(metadata)
+        return infos_inserted
+
     @task
-    def register_dataset_metadata(insert_info):
-        logging.info('register_dataset_metadata')
+    def get_examples_sentences(input_articles_text, words):
+        logging.info('get_examples_sentences')
+        divs_replace = [
+            'b',
+            'strong',
+            'i',
+            'em',
+            'blockquote'
+        ]
+
+        sentences = {}
+        sentences_saved = []
+        for article in input_articles_text:
+            doc = nlp(article)
+
+            for sentence in doc.sents:
+                formatted_sentence = str(sentence.text)
+                for div in divs_replace:
+                    formatted_sentence = formatted_sentence.replace(f'<{div}>', '').replace(f'</{div}>', '')
+
+                formatted_sentence = formatted_sentence.strip()
+                if len(formatted_sentence) > 150:
+                    continue
+
+                if any(word in formatted_sentence for word in words):
+                    for word in words:
+                        if word in formatted_sentence:
+                            word_id = words[word]
+                            sentences.setdefault(word_id, [])
+
+                            if len(sentences[word_id]) > 10:
+                                continue
+
+                            if formatted_sentence not in sentences[word_id] and formatted_sentence not in sentences_saved:
+                                sentences[word_id].append(formatted_sentence)
+                                sentences_saved.append(formatted_sentence)
+
+        return sentences
+
+    @task
+    def insert_new_sentences(input_sentences):
+        logging.info('insert_new_sentences')
+
+        cand_sentence = CandidateWordsSentences()
+        cand_sentence.connect()
+
+        count = 0
+        for id_word, sentences in input_sentences.items():
+            for sentence in sentences:
+                cand_sentence.insert_line(
+                    id_word=id_word,
+                    sentence=sentence
+                )
+                logging.info(f'Candidate sentence for word_id {id_word}: {sentence}')
+                count += 1
 
         metadata = {
-            'execution_time': datetime.utcnow().isoformat(),
-            'total_elegible_words': insert_info['total_elegible_words'],
-            'inserted_words': insert_info['inserted_words'],
-            'new_words': insert_info['new_words']
+            'total_sentences': len(count),
+            'total_words_sentences': len(input_sentences)
+        }
+
+        save_metadata(metadata)
+        return 1
+
+    @task
+    def register_end_metadata(_):
+        logging.info('register_end_metadata')
+
+        metadata = {
+            'end_execution_time': datetime.utcnow().isoformat(),
         }
 
         save_metadata(metadata)
         logging.info(f'Extract metadata: {metadata}')
 
-    raw_articles = load_raw_articles()
+    result = register_start_metadata()
+    raw_articles = load_raw_articles(result)
     consolidated_articles = build_corpus(raw_articles)
     filtered_articles_entities = remove_named_entities(consolidated_articles)
     cleaned_articles = clean_text(filtered_articles_entities)
@@ -239,8 +323,10 @@ def taskflow_dag():
     dict_word_frequency = calculate_word_frequency(filtered_words)
     dict_condidate_words = filter_candidate_words(dict_word_frequency)
     dict_filtered_words = filter_existing_words(dict_condidate_words)
-    s3_info = insert_new_words(dict_filtered_words)
-    register_dataset_metadata(s3_info)
+    words_inserted = insert_new_words(dict_filtered_words)
+    example_sentences = get_examples_sentences(consolidated_articles, words_inserted)
+    result = insert_new_sentences(example_sentences)
+    register_end_metadata(result)
 
 
 taskflow_dag()
