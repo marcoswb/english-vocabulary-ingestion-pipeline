@@ -1,4 +1,3 @@
-from airflow.decorators import dag, task
 from datetime import datetime
 import logging
 from src.scrapers.bbc import BBC
@@ -7,16 +6,19 @@ from src.scrapers.the_guardian import TheGuardian
 from src.load.s3_writer import save_vocab_data
 
 
-@dag(
-    dag_id='extract_news_articles',
-    start_date=datetime(2024, 1, 1),
-    schedule='@weekly',
-    catchup=False,
-    tags=['learning'],
-)
-def taskflow_dag():
+class ExtractArticles:
 
-    @task
+    def run(self):
+        logging.info('Starting extract_articles process')
+
+        articles = self.fetch_articles()
+        valid_articles = self.validate_articles(articles)
+        s3_info = self.store_raw_articles_s3(valid_articles)
+        self.register_extract_metadata(s3_info)
+
+        logging.info('Extract articles process completed')
+
+    @staticmethod
     def fetch_articles():
         fetched_articles = []
 
@@ -37,7 +39,7 @@ def taskflow_dag():
 
         return fetched_articles
 
-    @task
+    @staticmethod
     def validate_articles(list_articles):
         logging.info('validate_articles')
 
@@ -53,7 +55,7 @@ def taskflow_dag():
 
         return new_data
 
-    @task
+    @staticmethod
     def store_raw_articles_s3(store_articles):
         logging.info('store_raw_articles_s3')
 
@@ -64,7 +66,7 @@ def taskflow_dag():
             'count': len(store_articles)
         }
 
-    @task
+    @staticmethod
     def register_extract_metadata(extract_info):
         logging.info('register_extract_metadata')
 
@@ -75,11 +77,3 @@ def taskflow_dag():
         }
 
         logging.info(f'Extract metadata: {metadata}')
-
-    articles = fetch_articles()
-    valid_articles = validate_articles(articles)
-    s3_info = store_raw_articles_s3(valid_articles)
-    register_extract_metadata(s3_info)
-
-
-taskflow_dag()

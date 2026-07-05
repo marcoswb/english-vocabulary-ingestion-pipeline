@@ -1,5 +1,5 @@
-from airflow.decorators import dag, task
 from datetime import datetime
+import nltk
 from nltk.corpus import stopwords
 import logging
 import unicodedata
@@ -14,6 +14,7 @@ from src.models.candidate_words import CandidateWords
 from src.models.candidate_words_sentences import CandidateWordsSentences
 
 nlp = spacy.load('en_core_web_sm')
+nltk.download("stopwords")
 
 ENTITY_TYPES_TO_REMOVE = {
     'PERSON',
@@ -24,16 +25,30 @@ ENTITY_TYPES_TO_REMOVE = {
 }
 
 
-@dag(
-    dag_id='build_vocabulary_dataset',
-    start_date=datetime(2024, 1, 1),
-    schedule='@weekly',
-    catchup=False,
-    tags=['learning'],
-)
-def taskflow_dag():
 
-    @task
+class BuildVocabularyDataset:
+
+    def run(self):
+        logging.info('Starting build_vocabulary_dataset process')
+
+        result = self.register_start_metadata()
+        raw_articles = self.load_raw_articles(result)
+        consolidated_articles = self.build_corpus(raw_articles)
+        filtered_articles_entities = self.remove_named_entities(consolidated_articles)
+        cleaned_articles = self.clean_text(filtered_articles_entities)
+        tokenized_words = self.tokenize_lemmatize_words(cleaned_articles)
+        filtered_words = self.remove_stopwords(tokenized_words)
+        dict_word_frequency = self.calculate_word_frequency(filtered_words)
+        dict_condidate_words = self.filter_candidate_words(dict_word_frequency)
+        dict_filtered_words = self.filter_existing_words(dict_condidate_words)
+        words_inserted = self.insert_new_words(dict_filtered_words)
+        example_sentences = self.get_examples_sentences(consolidated_articles, words_inserted)
+        result = self.insert_new_sentences(example_sentences)
+        self.register_end_metadata(result)
+
+        logging.info('Build vocabulary dataset process completed')
+
+    @staticmethod
     def register_start_metadata():
         logging.info('register_start_metadata')
 
@@ -45,12 +60,12 @@ def taskflow_dag():
         logging.info(f'Extract metadata: {metadata}')
         return 1
 
-    @task
+    @staticmethod
     def load_raw_articles(_):
         logging.info('load_raw_articles')
         return load_last_raw()
 
-    @task
+    @staticmethod
     def build_corpus(input_articles):
         logging.info('build_corpus')
 
@@ -62,7 +77,7 @@ def taskflow_dag():
 
         return articles
 
-    @task
+    @staticmethod
     def remove_named_entities(input_articles_text):
         logging.info('remove_named_entities')
 
@@ -80,7 +95,7 @@ def taskflow_dag():
 
         return articles
 
-    @task
+    @staticmethod
     def clean_text(input_articles_text):
         logging.info('clean_text')
 
@@ -98,7 +113,7 @@ def taskflow_dag():
 
         return articles
 
-    @task
+    @staticmethod
     def tokenize_lemmatize_words(input_articles):
         logging.info('tokenize_lemmatize_words')
 
@@ -112,7 +127,7 @@ def taskflow_dag():
 
         return words
 
-    @task
+    @staticmethod
     def remove_stopwords(input_words):
         logging.info('remove_stopwords')
 
@@ -132,7 +147,7 @@ def taskflow_dag():
 
         return words
 
-    @task
+    @staticmethod
     def calculate_word_frequency(input_words):
         logging.info('calculate_word_frequency')
 
@@ -143,7 +158,7 @@ def taskflow_dag():
 
         return frequency
 
-    @task
+    @staticmethod
     def filter_candidate_words(input_words):
         logging.info('filter_candidate_words')
 
@@ -154,7 +169,7 @@ def taskflow_dag():
 
         return words
 
-    @task
+    @staticmethod
     def filter_existing_words(input_words):
         logging.info('filter_existing_words')
 
@@ -194,7 +209,7 @@ def taskflow_dag():
 
         return words
 
-    @task
+    @staticmethod
     def insert_new_words(input_words):
         logging.info('insert_new_words')
 
@@ -237,7 +252,7 @@ def taskflow_dag():
         save_metadata(metadata)
         return infos_inserted
 
-    @task
+    @staticmethod
     def get_examples_sentences(input_articles_text, words):
         logging.info('get_examples_sentences')
         divs_replace = [
@@ -277,7 +292,7 @@ def taskflow_dag():
 
         return sentences
 
-    @task
+    @staticmethod
     def insert_new_sentences(input_sentences):
         logging.info('insert_new_sentences')
 
@@ -302,7 +317,7 @@ def taskflow_dag():
         save_metadata(metadata)
         return 1
 
-    @task
+    @staticmethod
     def register_end_metadata(_):
         logging.info('register_end_metadata')
 
@@ -312,21 +327,3 @@ def taskflow_dag():
 
         save_metadata(metadata)
         logging.info(f'Extract metadata: {metadata}')
-
-    result = register_start_metadata()
-    raw_articles = load_raw_articles(result)
-    consolidated_articles = build_corpus(raw_articles)
-    filtered_articles_entities = remove_named_entities(consolidated_articles)
-    cleaned_articles = clean_text(filtered_articles_entities)
-    tokenized_words = tokenize_lemmatize_words(cleaned_articles)
-    filtered_words = remove_stopwords(tokenized_words)
-    dict_word_frequency = calculate_word_frequency(filtered_words)
-    dict_condidate_words = filter_candidate_words(dict_word_frequency)
-    dict_filtered_words = filter_existing_words(dict_condidate_words)
-    words_inserted = insert_new_words(dict_filtered_words)
-    example_sentences = get_examples_sentences(consolidated_articles, words_inserted)
-    result = insert_new_sentences(example_sentences)
-    register_end_metadata(result)
-
-
-taskflow_dag()

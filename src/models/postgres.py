@@ -1,5 +1,5 @@
 import psycopg2
-from airflow.models import Variable
+from src.utils.functions import get_env_variable
 
 
 class Postgres:
@@ -17,10 +17,10 @@ class Postgres:
     def connect(self):
         if not Postgres.get_connection():
             Postgres.opened_connection = psycopg2.connect(
-                                    dbname=Variable.get('DB_DATABASE'),
-                                    user=Variable.get('DB_USER'),
-                                    password=Variable.get('DB_PASSWORD'),
-                                    host=Variable.get('DB_HOST'),
+                                    dbname=get_env_variable('DB_DATABASE'),
+                                    user=get_env_variable('DB_USER'),
+                                    password=get_env_variable('DB_PASSWORD'),
+                                    host=get_env_variable('DB_HOST'),
                                     port=5432
                                 )
 
