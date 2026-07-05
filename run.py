@@ -18,7 +18,7 @@ def main():
 if __name__ == "__main__":
 
     logging.basicConfig(
-        filename="logs/pipeline.log",
+        filename="pipeline.log",
         level=logging.INFO,
     )
 

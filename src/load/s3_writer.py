@@ -1,20 +1,19 @@
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+import boto3
 import json
 from datetime import datetime
 from src.utils.functions import get_s3_bucket
 from src.load.s3_loader import load_metadata
 
 
+s3 = boto3.client("s3")
+
 def upload_json_to_s3(data, bucket, key):
-    hook = S3Hook(aws_conn_id='aws_default')
-
-    hook.load_string(
-        string_data=json.dumps(data),
-        key=key,
-        bucket_name=bucket,
-        replace=True
+    s3.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=json.dumps(data),
+        ContentType="application/json",
     )
-
 
 def save_vocab_data(data):
     bucket_name = get_s3_bucket()
