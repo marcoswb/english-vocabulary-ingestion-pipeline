@@ -13,7 +13,7 @@ class TheGuardian:
         main_page.load_page()
         articles = []
 
-        for item in main_page.get_itens('a.dcr-2yd10d'):
+        for item in main_page.get_itens('a.dcr-idxb0f'):
             link = str(item['href'])
             if main_page.is_link(link):
                 if link.startswith(self.__base_url):
@@ -36,7 +36,7 @@ class TheGuardian:
             article_page = BaseScraper(url)
             article_page.load_page()
 
-            div_title = article_page.get_itens('h1.dcr-1k1a1x')
+            div_title = article_page.get_itens('h1.dcr-l0wuod')
             if div_title:
                 article.title = div_title[0].get_text(strip=True)
             else:
@@ -45,15 +45,15 @@ class TheGuardian:
             if article.title in self.__articles_titles:
                 continue
 
-            divs_text = article_page.get_itens('p.dcr-130mj7b')
+            divs_text = article_page.get_itens('p.dcr-1s160rg')
             if not divs_text:
                 continue
 
-            div_time_published = article_page.get_itens('.dcr-u0h1qy')
+            div_time_published = article_page.get_itens('.dcr-10i63lj')
             if div_time_published:
                 article.published_at = format_time(div_time_published[0].get_text(strip=True))
 
-            div_contribuitors = article_page.get_itens('.dcr-16bbvim')
+            div_contribuitors = article_page.get_itens('.dcr-15wyqgv')
             if div_contribuitors:
                 contribuitors = ''
                 for contributor_div in div_contribuitors:

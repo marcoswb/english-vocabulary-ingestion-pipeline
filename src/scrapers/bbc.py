@@ -13,7 +13,7 @@ class BBC:
         main_page.load_page()
         articles = []
 
-        for item in main_page.get_itens('a.sc-8a623a54-0'):
+        for item in main_page.get_itens('a.Anchor-styles__AnchorStyled-sc-651d33db-0'):
             link = str(item['href'])
             if main_page.is_link(link):
                 if link.startswith(self.__base_url):
@@ -49,11 +49,11 @@ class BBC:
             if not divs_text:
                 continue
 
-            div_time_published = article_page.get_itens('.sc-3adb3607-2')
+            div_time_published = article_page.get_itens('.Byline-styles__TimeContainerStyled-sc-66f6383-2 hcsYRh')
             if div_time_published:
                 article.published_at = format_time(div_time_published[0].get_text(strip=True))
 
-            div_contribuitors = article_page.get_itens('.sc-3adb3607-8')
+            div_contribuitors = article_page.get_itens('.Byline-styles__AuthorNameStyled-sc-66f6383-8')
             if div_contribuitors:
                 contribuitors = ''
                 for contributor in div_contribuitors:
