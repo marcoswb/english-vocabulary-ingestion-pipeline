@@ -264,7 +264,6 @@ class BuildVocabularyDataset:
         ]
 
         sentences = {}
-        sentences_saved = []
         for article in input_articles_text:
             doc = nlp(article)
 
@@ -286,9 +285,8 @@ class BuildVocabularyDataset:
                             if len(sentences[word_id]) > 10:
                                 continue
 
-                            if formatted_sentence not in sentences[word_id] and formatted_sentence not in sentences_saved:
+                            if formatted_sentence not in sentences[word_id]:
                                 sentences[word_id].append(formatted_sentence)
-                                sentences_saved.append(formatted_sentence)
 
         return sentences
 
