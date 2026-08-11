@@ -1,7 +1,22 @@
 import pytest
 from datetime import datetime
-from src.scrapers.bbc import format_time
+from src.scrapers.bbc import format_time, BBC
 
+
+def test_get_articles_to_extract(mocker):
+    scraper = BBC()
+
+    scraper._BBC__main_page = mocker.Mock()
+    scraper._BBC__main_page.get_itens.return_value = ["item1", "item2"]
+
+    result = scraper._get_articles_to_extract()
+
+    scraper._BBC__main_page.load_page.assert_called_once()
+    scraper._BBC__main_page.get_itens.assert_called_once_with(
+        'a.Anchor-styles__AnchorStyled-sc-651d33db-0'
+    )
+
+    assert result == ["item1", "item2"]
 
 @pytest.mark.parametrize("str_time", [
     "1 hour ago",
