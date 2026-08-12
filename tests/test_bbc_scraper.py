@@ -3,10 +3,14 @@ from datetime import datetime
 from src.scrapers.bbc import format_time, BBC
 
 
-def test_get_articles_to_extract(mocker):
+@pytest.fixture
+def scraper(mocker):
     scraper = BBC()
-
     scraper._BBC__main_page = mocker.Mock()
+    return scraper
+
+
+def test_get_articles_to_extract(scraper):
     scraper._BBC__main_page.get_itens.return_value = ["item1", "item2"]
 
     result = scraper._get_articles_to_extract()
@@ -17,6 +21,85 @@ def test_get_articles_to_extract(mocker):
     )
 
     assert result == ["item1", "item2"]
+
+
+def test_get_link_from_item_without_href(scraper):
+    item = {"hrefe": "https://www.bbc.com/news/article"}
+    with pytest.raises(KeyError):
+        scraper._get_link_from_item(item)
+
+
+def test_get_link_from_item_with_valid_internal_link(scraper):
+    link_base = "https://www.bbc.com/news/article"
+    item = {"href": str(link_base)}
+
+    scraper._BBC__main_page.is_link.return_value = True
+    scraper._BBC__main_page.is_internal_link.return_value = True
+
+    result = scraper._get_link_from_item(item)
+
+    scraper._BBC__main_page.is_link.assert_called_once_with(link_base)
+    scraper._BBC__main_page.is_internal_link.assert_called_once_with("/news/article")
+
+    assert result == link_base
+
+
+def test_get_link_from_item_with_invalid_internal_link(scraper):
+    link_base = "https://www.bbc.com/news"
+    item = {"href": str(link_base)}
+
+    scraper._BBC__main_page.is_link.return_value = True
+    scraper._BBC__main_page.is_internal_link.return_value = False
+
+    result = scraper._get_link_from_item(item)
+
+    scraper._BBC__main_page.is_link.assert_called_once_with(link_base)
+    scraper._BBC__main_page.is_internal_link.assert_called_once_with("/news")
+
+    assert result is None
+
+
+def test_get_link_from_item_with_external_link(scraper):
+    link_base = "https://www.google.com"
+    item = {"href": str(link_base)}
+
+    scraper._BBC__main_page.is_link.return_value = True
+
+    result = scraper._get_link_from_item(item)
+
+    scraper._BBC__main_page.is_link.assert_called_once_with(link_base)
+    scraper._BBC__main_page.is_internal_link.assert_not_called()
+
+    assert result == link_base
+
+
+def test_get_link_from_item_with_relative_link(scraper):
+    item = {"href": "/news/article"}
+
+    scraper._BBC__main_page.is_link.return_value = False
+    scraper._BBC__main_page.is_internal_link.return_value = True
+
+    result = scraper._get_link_from_item(item)
+
+    scraper._BBC__main_page.is_link.assert_called_once_with("/news/article")
+    scraper._BBC__main_page.is_internal_link.assert_called_once_with("/news/article")
+
+    assert result == "https://www.bbc.com/news/article"
+
+
+def test_get_link_from_item_with_invalid_link(scraper):
+    item = {"href": "invalid_link"}
+
+    scraper._BBC__main_page.is_link.return_value = False
+    scraper._BBC__main_page.is_internal_link.return_value = False
+
+    result = scraper._get_link_from_item(item)
+
+    scraper._BBC__main_page.is_link.assert_called_once_with("invalid_link")
+    scraper._BBC__main_page.is_internal_link.assert_called_once_with("invalid_link")
+
+    assert result is None
+
 
 @pytest.mark.parametrize("str_time", [
     "1 hour ago",
@@ -33,6 +116,7 @@ def test_format_time(str_time):
 
     parsed = datetime.fromisoformat(timestamp)
     assert isinstance(parsed, datetime)
+
 
 @pytest.mark.parametrize("str_time", [
     "4 May 2026",
